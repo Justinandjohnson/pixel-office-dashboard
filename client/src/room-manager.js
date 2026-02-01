@@ -166,10 +166,16 @@ export class RoomManager {
   }
 
   addCharacter(room) {
-    const character = new PIXI.Graphics();
-    character.beginFill(0xffffff);
-    character.drawCircle(0, 0, 4);
-    character.endFill();
+    // Load a random character sprite
+    const spriteIndex = Math.floor(Math.random() * 132); // 132 character sprites available
+    const spritePath = `/assets/sprites/characters/tile_${spriteIndex.toString().padStart(4, '0')}.png`;
+
+    const texture = PIXI.Texture.from(spritePath);
+    const character = new PIXI.Sprite(texture);
+
+    // Scale the sprite (pixel art sprites are typically small)
+    character.scale.set(2, 2);
+    character.anchor.set(0.5, 0.5);
 
     const angle = (room.characters.length / (room.characterCount + 1)) * Math.PI * 2;
     const radius = 40;

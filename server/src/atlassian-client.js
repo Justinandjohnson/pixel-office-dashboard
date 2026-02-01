@@ -50,31 +50,42 @@ export class AtlassianMCPClient {
         return { space, pages: [], updates: 0, keywords: [], lastUpdate: new Date() };
       }
 
-      // Query for pages updated in the last 7 days
+      // Query for pages updated in the last 7 days using Confluence API v2
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       const dateStr = oneWeekAgo.toISOString().split('T')[0];
 
-      const cql = `space=${space} AND lastModified >= "${dateStr}" order by lastModified desc`;
-      const url = `${this.baseUrl}/wiki/rest/api/content/search?cql=${encodeURIComponent(cql)}&limit=100`;
+      // Use Confluence API v2 - v1 is deprecated
+      const cql = `space=${space} AND type=page AND lastModified >= "${dateStr}"`;
+      const url = `${this.baseUrl}/wiki/api/v2/pages?spaceKey=${space}&limit=100&sort=-modified-date`;
 
       const data = await this.makeRequest(url);
 
       const pages = data.results || [];
-      const updates = pages.length;
+
+      // Filter for pages updated in last 7 days
+      const recentPages = pages.filter(page => {
+        if (!page.version || !page.version.createdAt) return false;
+        const lastModified = new Date(page.version.createdAt);
+        return lastModified >= oneWeekAgo;
+      });
+
+      const updates = recentPages.length;
 
       // Extract keywords from recent page titles
       const keywords = new Set();
-      pages.forEach(page => {
+      recentPages.forEach(page => {
         const title = page.title.toLowerCase();
         if (title.includes('urgent') || title.includes('critical')) keywords.add('urgent');
         if (title.includes('update') || title.includes('release')) keywords.add('update');
         if (title.includes('blocked') || title.includes('issue')) keywords.add('blocked');
       });
 
+      console.log(`✅ Confluence ${space}: ${updates} pages updated in last 7 days`);
+
       return {
         space,
-        pages: pages.slice(0, 10),
+        pages: recentPages.slice(0, 10),
         updates,
         keywords: Array.from(keywords),
         lastUpdate: new Date()
@@ -101,14 +112,16 @@ export class AtlassianMCPClient {
       // Query for issues in different states
       const [inProgressData, blockedData, doneData, highPriorityData] = await Promise.all([
         // Issues in progress
-        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND status="In Progress"`)}&maxResults=100`).catch(() => ({ total: 0 })),
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project="${projectKey}" AND status="In Progress"`)}&maxResults=0&fields=summary`).catch(() => ({ total: 0 })),
         // Blocked issues
-        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND status=Blocked`)}&maxResults=100`).catch(() => ({ total: 0 })),
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project="${projectKey}" AND statusCategory="To Do" AND labels=blocked`)}&maxResults=0&fields=summary`).catch(() => ({ total: 0 })),
         // Issues completed today
-        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND status=Done AND resolved >= -1d`)}&maxResults=100`).catch(() => ({ total: 0 })),
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project="${projectKey}" AND statusCategory=Done AND resolved >= -1d`)}&maxResults=0&fields=summary`).catch(() => ({ total: 0 })),
         // High priority issues
-        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND priority in (Highest, High) AND status != Done`)}&maxResults=100`).catch(() => ({ total: 0 }))
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project="${projectKey}" AND priority in (Highest, High) AND statusCategory != Done`)}&maxResults=0&fields=summary`).catch(() => ({ total: 0 }))
       ]);
+
+      console.log(`✅ Jira ${projectKey}: ${inProgressData.total || 0} in progress, ${blockedData.total || 0} blocked, ${doneData.total || 0} done today`);
 
       return {
         projectKey,
