@@ -3,6 +3,7 @@ import path from 'path';
 
 export default defineConfig({
   root: 'client',
+  publicDir: '../assets',
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, './shared')
