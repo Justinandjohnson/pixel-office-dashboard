@@ -9,7 +9,7 @@ import { AtlassianMCPClient } from './atlassian-client.js';
 import { determineRoomState, calculateCharacterCount } from './state-analyzer.js';
 import { DEPARTMENTS, POLL_INTERVALS } from '../../shared/department-config.js';
 
-const PORT = process.env.WEBSOCKET_PORT || 8080;
+const PORT = process.env.PORT || process.env.WEBSOCKET_PORT || 8080;
 
 class DashboardServer {
   constructor() {

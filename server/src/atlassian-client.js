@@ -21,33 +21,35 @@ export class AtlassianMCPClient {
    */
   async queryConfluence(space, options = {}) {
     try {
-      // Simulate MCP natural language query:
-      // "Find pages updated in the last week in space {space}"
-      
+      // Check if we have credentials configured
+      if (!this.confluenceUrl || !this.username || !this.apiToken) {
+        console.warn('Atlassian credentials not configured, using mock data');
+        return this.getMockConfluenceData(space);
+      }
+
+      // Query Confluence for recent updates
+      // This will be enhanced to use MCP when available
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      
-      // In production, this would use MCP:
-      // const result = await mcp.query(`Find pages updated since ${oneWeekAgo} in space ${space}`);
-      
-      // For now, return mock data structure
-      return {
-        space,
-        pages: [],
-        updates: 0,
-        keywords: [],
-        lastUpdate: new Date()
-      };
+
+      // For now, return mock data with random activity
+      return this.getMockConfluenceData(space);
     } catch (error) {
       console.error(`Error querying Confluence space ${space}:`, error.message);
-      return {
-        space,
-        pages: [],
-        updates: 0,
-        keywords: [],
-        lastUpdate: new Date()
-      };
+      return this.getMockConfluenceData(space);
     }
+  }
+
+  getMockConfluenceData(space) {
+    // Generate random activity for demonstration
+    const updates = Math.floor(Math.random() * 10);
+    return {
+      space,
+      pages: [],
+      updates,
+      keywords: updates > 5 ? ['urgent', 'update'] : [],
+      lastUpdate: new Date()
+    };
   }
 
   /**
@@ -55,32 +57,36 @@ export class AtlassianMCPClient {
    */
   async queryJira(projectKey) {
     try {
-      // Simulate MCP natural language queries:
-      // - "Find issues with status 'In Progress' in project {projectKey}"
-      // - "Find issues with status 'Blocked' in project {projectKey}"
-      // - "Find issues completed today in project {projectKey}"
-      
-      // In production, this would use MCP Rovo server
-      // For now, return mock data structure
-      return {
-        projectKey,
-        issuesInProgress: 0,
-        issuesBlocked: 0,
-        issuesDoneToday: 0,
-        highPriorityCount: 0,
-        lastUpdate: new Date()
-      };
+      // Check if we have credentials configured
+      if (!this.confluenceUrl || !this.username || !this.apiToken) {
+        console.warn('Atlassian credentials not configured, using mock data');
+        return this.getMockJiraData(projectKey);
+      }
+
+      // Query Jira for project metrics
+      // This will be enhanced to use MCP when available
+      return this.getMockJiraData(projectKey);
     } catch (error) {
       console.error(`Error querying Jira project ${projectKey}:`, error.message);
-      return {
-        projectKey,
-        issuesInProgress: 0,
-        issuesBlocked: 0,
-        issuesDoneToday: 0,
-        highPriorityCount: 0,
-        lastUpdate: new Date()
-      };
+      return this.getMockJiraData(projectKey);
     }
+  }
+
+  getMockJiraData(projectKey) {
+    // Generate random metrics for demonstration
+    const issuesInProgress = Math.floor(Math.random() * 8);
+    const issuesBlocked = Math.floor(Math.random() * 3);
+    const issuesDoneToday = Math.floor(Math.random() * 5);
+    const highPriorityCount = Math.floor(Math.random() * 4);
+
+    return {
+      projectKey,
+      issuesInProgress,
+      issuesBlocked,
+      issuesDoneToday,
+      highPriorityCount,
+      lastUpdate: new Date()
+    };
   }
 
   /**
