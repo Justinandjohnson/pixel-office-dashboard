@@ -1,6 +1,6 @@
 /**
- * Atlassian MCP Client
- * Handles queries to Confluence and Jira via MCP servers
+ * Atlassian Client
+ * Handles queries to Confluence and Jira via REST APIs
  */
 
 import 'dotenv/config';
@@ -10,10 +10,33 @@ export class AtlassianMCPClient {
     this.confluenceUrl = process.env.CONFLUENCE_URL;
     this.username = process.env.CONFLUENCE_USERNAME;
     this.apiToken = process.env.CONFLUENCE_API_TOKEN;
-    
-    // Note: In production, this would use the actual MCP protocol
-    // For now, we'll use direct REST API calls as a fallback
+
+    // Extract base URL for API calls
     this.baseUrl = this.confluenceUrl?.replace('/wiki', '');
+    this.authHeader = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
+  }
+
+  async makeRequest(url, options = {}) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Authorization': `Basic ${this.authHeader}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...options.headers
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API request error:', error.message);
+      throw error;
+    }
   }
 
   /**
@@ -23,33 +46,43 @@ export class AtlassianMCPClient {
     try {
       // Check if we have credentials configured
       if (!this.confluenceUrl || !this.username || !this.apiToken) {
-        console.warn('Atlassian credentials not configured, using mock data');
-        return this.getMockConfluenceData(space);
+        console.warn('Atlassian credentials not configured');
+        return { space, pages: [], updates: 0, keywords: [], lastUpdate: new Date() };
       }
 
-      // Query Confluence for recent updates
-      // This will be enhanced to use MCP when available
+      // Query for pages updated in the last 7 days
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      const dateStr = oneWeekAgo.toISOString().split('T')[0];
 
-      // For now, return mock data with random activity
-      return this.getMockConfluenceData(space);
+      const cql = `space=${space} AND lastModified >= "${dateStr}" order by lastModified desc`;
+      const url = `${this.baseUrl}/wiki/rest/api/content/search?cql=${encodeURIComponent(cql)}&limit=100`;
+
+      const data = await this.makeRequest(url);
+
+      const pages = data.results || [];
+      const updates = pages.length;
+
+      // Extract keywords from recent page titles
+      const keywords = new Set();
+      pages.forEach(page => {
+        const title = page.title.toLowerCase();
+        if (title.includes('urgent') || title.includes('critical')) keywords.add('urgent');
+        if (title.includes('update') || title.includes('release')) keywords.add('update');
+        if (title.includes('blocked') || title.includes('issue')) keywords.add('blocked');
+      });
+
+      return {
+        space,
+        pages: pages.slice(0, 10),
+        updates,
+        keywords: Array.from(keywords),
+        lastUpdate: new Date()
+      };
     } catch (error) {
       console.error(`Error querying Confluence space ${space}:`, error.message);
-      return this.getMockConfluenceData(space);
+      return { space, pages: [], updates: 0, keywords: [], lastUpdate: new Date() };
     }
-  }
-
-  getMockConfluenceData(space) {
-    // Generate random activity for demonstration
-    const updates = Math.floor(Math.random() * 10);
-    return {
-      space,
-      pages: [],
-      updates,
-      keywords: updates > 5 ? ['urgent', 'update'] : [],
-      lastUpdate: new Date()
-    };
   }
 
   /**
@@ -59,34 +92,36 @@ export class AtlassianMCPClient {
     try {
       // Check if we have credentials configured
       if (!this.confluenceUrl || !this.username || !this.apiToken) {
-        console.warn('Atlassian credentials not configured, using mock data');
-        return this.getMockJiraData(projectKey);
+        console.warn('Atlassian credentials not configured');
+        return { projectKey, issuesInProgress: 0, issuesBlocked: 0, issuesDoneToday: 0, highPriorityCount: 0, lastUpdate: new Date() };
       }
 
-      // Query Jira for project metrics
-      // This will be enhanced to use MCP when available
-      return this.getMockJiraData(projectKey);
+      const jiraUrl = this.baseUrl; // Same base URL for Jira
+
+      // Query for issues in different states
+      const [inProgressData, blockedData, doneData, highPriorityData] = await Promise.all([
+        // Issues in progress
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND status="In Progress"`)}&maxResults=100`).catch(() => ({ total: 0 })),
+        // Blocked issues
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND status=Blocked`)}&maxResults=100`).catch(() => ({ total: 0 })),
+        // Issues completed today
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND status=Done AND resolved >= -1d`)}&maxResults=100`).catch(() => ({ total: 0 })),
+        // High priority issues
+        this.makeRequest(`${jiraUrl}/rest/api/3/search?jql=${encodeURIComponent(`project=${projectKey} AND priority in (Highest, High) AND status != Done`)}&maxResults=100`).catch(() => ({ total: 0 }))
+      ]);
+
+      return {
+        projectKey,
+        issuesInProgress: inProgressData.total || 0,
+        issuesBlocked: blockedData.total || 0,
+        issuesDoneToday: doneData.total || 0,
+        highPriorityCount: highPriorityData.total || 0,
+        lastUpdate: new Date()
+      };
     } catch (error) {
       console.error(`Error querying Jira project ${projectKey}:`, error.message);
-      return this.getMockJiraData(projectKey);
+      return { projectKey, issuesInProgress: 0, issuesBlocked: 0, issuesDoneToday: 0, highPriorityCount: 0, lastUpdate: new Date() };
     }
-  }
-
-  getMockJiraData(projectKey) {
-    // Generate random metrics for demonstration
-    const issuesInProgress = Math.floor(Math.random() * 8);
-    const issuesBlocked = Math.floor(Math.random() * 3);
-    const issuesDoneToday = Math.floor(Math.random() * 5);
-    const highPriorityCount = Math.floor(Math.random() * 4);
-
-    return {
-      projectKey,
-      issuesInProgress,
-      issuesBlocked,
-      issuesDoneToday,
-      highPriorityCount,
-      lastUpdate: new Date()
-    };
   }
 
   /**
