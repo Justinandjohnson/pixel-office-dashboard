@@ -88,3 +88,19 @@ export const CANVAS_CONFIG = {
   height: 432,
   backgroundColor: 0x1a1a2e
 };
+
+// Polling intervals configuration
+export const POLL_INTERVALS = {
+  HIGH_ACTIVITY: {
+    spaces: ['Eng', 'QA', 'EP'],
+    interval: 30000  // 30 seconds
+  },
+  MEDIUM_ACTIVITY: {
+    spaces: ['PM', 'ADS', 'Ops'],
+    interval: 60000  // 60 seconds
+  },
+  LOW_ACTIVITY: {
+    spaces: ['DW', 'IT', 'MKT', 'OM'],
+    interval: 120000  // 2 minutes
+  }
+};
