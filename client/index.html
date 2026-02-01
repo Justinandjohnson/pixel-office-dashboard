@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Office Dashboard - Pinger HQ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f0f1e;
+      color: #fff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    #header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding: 20px;
+    }
+
+    #header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    #header p {
+      color: #999;
+      font-size: 0.9rem;
+    }
+
+    #canvas-container {
+      position: relative;
+      border: 2px solid #2d2d44;
+      border-radius: 8px;
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    #status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 8px 16px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #status.connected {
+      color: #10b981;
+    }
+
+    #status.disconnected {
+      color: #ef4444;
+    }
+
+    #status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    #footer {
+      margin-top: 20px;
+      text-align: center;
+      color: #666;
+      font-size: 0.75rem;
+    }
+
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 100;
+    }
+
+    #loading.hidden {
+      display: none;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>🏢 Pinger Pixel Office</h1>
+    <p>Real-time team activity visualization</p>
+  </div>
+
+  <div id="canvas-container">
+    <div id="loading">
+      <div class="spinner"></div>
+      <p>Loading office...</p>
+    </div>
+    <div id="status" class="disconnected">Connecting...</div>
+  </div>
+
+  <div id="footer">
+    <p>Powered by PixiJS + Atlassian MCP | Updates every 30-120s</p>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
