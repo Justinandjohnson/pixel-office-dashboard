@@ -170,6 +170,8 @@ export class RoomManager {
     const spriteIndex = Math.floor(Math.random() * 132); // 132 character sprites available
     const spritePath = `/sprites/characters/tile_${spriteIndex.toString().padStart(4, '0')}.png`;
 
+    console.log(`Adding character to ${room.dept.name}: ${spritePath}`);
+
     const texture = PIXI.Texture.from(spritePath);
     const character = new PIXI.Sprite(texture);
 
